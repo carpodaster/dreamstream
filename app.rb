@@ -5,13 +5,17 @@ require 'thread'
 
 require_relative './sleepy_record'
 
+WORKERS = 3
+
 get '/' do
   'Hello Sinatra'
 end
 
 get '/export' do
-  @queue = Queue.new
-  SleepyRecord.find_in_batches { |batch| @queue << batch }
+  @queue = SizedQueue.new(WORKERS * 2)
+
+  # Separate thread since push op on SizedQueue may block
+  Thread.new { SleepyRecord.find_in_batches { |batch| @queue << batch } }
 
   readio, writeio = IO.pipe
 
