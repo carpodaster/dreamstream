@@ -7,10 +7,6 @@ require_relative './sleepy_record'
 
 WORKERS = 3
 
-get '/' do
-  'Hello Sinatra'
-end
-
 get '/export' do
   @queue = SizedQueue.new(WORKERS * 2)
 
