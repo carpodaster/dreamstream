@@ -13,11 +13,21 @@ get '/export' do
   @queue = Queue.new
   SleepyRecord.find_in_batches { |batch| @queue << batch }
 
+  readio, writeio = IO.pipe
+
+  @threads = 1.upto(3).map do
+    Thread.new {
+      until @queue.empty? do
+        group = @queue.pop
+        group.each { |line| writeio.write line }
+      end
+    }
+  end
+
   stream do |out|
-    until @queue.empty? do
-      group = @queue.pop
-      group.each { |line| out << line }
+    while chunk = readio.gets do
+      out << chunk
+      out.flush
     end
-    out.flush
   end
 end
