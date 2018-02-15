@@ -1,29 +1,22 @@
 require 'sinatra'
 require 'sinatra/reloader'
+require 'sinatra/streaming'
+require 'thread'
+
+require_relative './sleepy_record'
 
 get '/' do
   'Hello Sinatra'
 end
 
-SleepyRecord = Struct.new(:items_count) do
-  class << self
-    def find_in_batches
-      1.upto(4).map { new(10) }
-    end
-  end
-
-  def each
-    items_count.times do
-      sleep 0.3
-      yield "My;CSV;line\n"
-    end
-  end
-end
-
 get '/export' do
+  @queue = Queue.new
+  SleepyRecord.find_in_batches { |batch| @queue << batch }
+
   stream do |out|
-    SleepyRecord.new(10).each do |line|
-      out << line
+    until @queue.empty? do
+      group = @queue.pop
+      group.each { |line| out << line }
     end
     out.flush
   end
