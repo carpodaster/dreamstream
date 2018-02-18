@@ -15,7 +15,7 @@ get '/export' do
 
   readio, writeio = IO.pipe
 
-  @threads = 1.upto(3).map do
+  @exporters = 1.upto(3).map do
     Thread.new {
       until @queue.empty? do
         group = @queue.pop
@@ -23,6 +23,12 @@ get '/export' do
       end
     }
   end
+
+  # IO "guard"
+  Thread.new {
+    while @exporters.any?(&:alive?) do sleep 0.01 end
+    writeio.close
+  }
 
   stream do |out|
     while chunk = readio.gets do
