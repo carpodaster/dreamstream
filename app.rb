@@ -30,6 +30,9 @@ get '/export' do
     writeio.close
   }
 
+  content_type "text/csv"
+  attachment "export.csv"
+
   stream do |out|
     while chunk = readio.gets do
       out << chunk
