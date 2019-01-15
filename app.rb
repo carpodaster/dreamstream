@@ -7,7 +7,28 @@ require_relative './sleepy_record'
 
 WORKERS = 3
 
-get '/export' do
+use Rack::Logger
+
+helpers do
+  def log(chunk)
+    request.logger.info chunk.chomp
+  end
+end
+
+get '/export/sequentially' do
+  content_type "text/csv"
+  attachment "export_seq.csv"
+
+  stream do |out|
+    SleepyRecord.all.each do |csv|
+      log csv
+      out << csv
+      out.flush
+    end
+  end
+end
+
+get '/export/parallel' do
   @queue = SizedQueue.new(WORKERS * 2)
 
   # Separate thread since push op on SizedQueue may block
@@ -31,10 +52,11 @@ get '/export' do
   }
 
   content_type "text/csv"
-  attachment "export.csv"
+  attachment "export_par.csv"
 
   stream do |out|
     while chunk = readio.gets do
+      log chunk
       out << chunk
       out.flush
     end
